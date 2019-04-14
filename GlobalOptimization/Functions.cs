@@ -1,14 +1,22 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace GlobalOptimization
 {
-    public delegate double Function(double x);
+    public delegate double Function(double x, IEnumerable<double[]> coefficients = null);
 
     public static class Functions
     {
-        public static double Shekel(double x)
-        {           
-            var coefficients = new List<double[]>()
+        /// <summary>
+        /// Функция Шекеля
+        /// </summary>
+        /// <param name="x">Аргумент функции</param>
+        /// <param name="coefficients">Коэффициенты функции</param>
+        /// <returns></returns>
+        public static double Shekel(double x, IEnumerable<double[]> coefficients = null)
+        {
+            coefficients = coefficients ?? new List<double[]>()
             {
                 new double[] { 0.394344, 1.393876, 0.126179 },
                 new double[] { 0.295838, 0.655881, 0.087775 },
@@ -22,13 +30,7 @@ namespace GlobalOptimization
                 new double[] { 0.500884, 2.850398, 0.030718 },
             };
 
-            double sum = 0;
-            foreach (var coefficient in coefficients)
-            {
-                sum += 1 / (coefficient[0] * (x - coefficient[1]) * (x - coefficient[1]) + coefficient[2]);
-            }
-
-            return -sum;
+            return -coefficients.Sum(coefficient => 1 / (coefficient[0] * (x - coefficient[1]) * (x - coefficient[1]) + coefficient[2]));
         }
     }
 }

@@ -7,78 +7,69 @@ namespace GlobalOptimization
     public static class Solver
     {
         /// <summary>
-        /// Алгоритм глобального поиска Стронгина
+        /// Метод одномерной глобальной оптимизации Р.Стронгина
         /// Находит абсолютный минимум функции на отрезке с заданной точностью
-        /// http://crm-en.ics.org.ru/uploads/crmissues/crm_2015_3/15750.pdf
+        /// https://pribor.ifmo.ru/file/article/4922.pdf
         /// </summary>
         /// <param name="function">Функция</param>
         /// <param name="a">Левая граница отрезка</param>
         /// <param name="b">Правая граница отрезка</param>
-        /// <param name="accuracy">Точность</param>
+        /// <param name="eps">Точность</param>
         /// <param name="r">Заданный коэффициент, параметр алгоритма, который определяется из предположений о коэффициенте K в условии Липшица (r > 1)</param>
-        /// <returns>Абсолютный минимум функции</returns>
-        public static double GetAbsoluteMinimum(Function function, double a, double b, double accuracy, double r)
+        /// <param name="x">Точка глобального минимума</param>
+        /// <param name="y">Глобальный минимум</param>
+        public static void GetAbsoluteMinimum(Function function, double a, double b, double eps, double r, out double x, out double y)
         {
             // Список Х координат функции
             var xPoints = new List<double>() { a, b };
 
-            // Список интервалов для данных координат Х 
-            var intervals = GetIntervals(xPoints);
-
-            // Точка разбиения интервала
-            double x;
+            // Интервал, которому соответствует максимальная R характеристика
+            Interval intervalMaxR; 
 
             do
             {
-                // TODO: Уточнить знаменатель
-                // Находим максимальное абсолютное значение относительной первой разности
-                double M = intervals.Max(interval => Math.Abs(function(interval.B) - function(interval.A)) / (interval.B - interval.A));
+                xPoints.Sort();
 
-                // Если верно, то ошибка в вычислении M
+                // Список интервалов для данных координат Х 
+                var intervals = Interval.GetIntervals(xPoints.ToArray());
+
+                // Находим максимальное абсолютное значение относительной первой разности
+                var M = intervals.Max(interval => Math.Abs(function(interval.B) - function(interval.A)) / (interval.B - interval.A));
+
                 if (M < 0)
                 {
                     throw new ArgumentException("M не может быть меньше нуля");
                 }
-
+                
                 double m = (M == 0) ? 1 : (r * M);
 
                 // Для каждого интервала вычисляем R характеристику
                 // Она определяет вероятность нахождения глобального минимума на этом интервале. Чем она больше, тем больше вероятность
                 foreach (var interval in intervals)
                 {
-                    interval.R = m * (interval.B - interval.A) + Math.Pow(function(interval.B) - function(interval.A), 2) / (m * (interval.B - interval.A))
-                        - 2 * (function(interval.B) + function(interval.A));
+                    interval.R = 2 * (interval.B - interval.A) - 4 * function(interval.B) / (r * m);
                 }
 
                 // Находим интервал, которому соответствует максимальная R характеристика
-                Interval intervalMaxR = intervals.First(interval => interval.R == intervals.Max(i => i.R));
+                intervalMaxR = intervals.First(interval => interval.R == intervals.Max(i => i.R));
 
-                // Вычсляем новую точку разбиения интервала 
-                x = 0.5 * (intervalMaxR.A + intervalMaxR.B) - 0.5 * (function(intervalMaxR.B) - function(intervalMaxR.A));
+                // Вычисляем новую точку разбиения интервала                
+                double xk = intervalMaxR.A != intervalMaxR.B ?
+                    0.5 * (intervalMaxR.A + intervalMaxR.B) :
+                    0.5 * (intervalMaxR.A + intervalMaxR.B) - Math.Sign(function(intervalMaxR.B) - 
+                    function(intervalMaxR.A)) / (2 * r) * function(intervalMaxR.B) - function(intervalMaxR.A) / m;
 
-                xPoints.Add(x);
-                xPoints.Sort();
+                // Если достигли заданной погрешности, останавливаемся
+                if (intervalMaxR.B - intervalMaxR.A < eps)
+                {
+                    x = xk;
+                    y = function(xk);
+                    return;
+                }
 
-                intervals = GetIntervals(xPoints);
+                xPoints.Add(xk);
             }
-            // TODO: уточнить условие остановки
-            while (intervals.Min(interval => interval.B - x) < accuracy);
-
-            return function(x);
-        }
-
-        // Возвращает список интервалов, исходя из заданного списка точек
-        // Пример: points = [1, 2, 3] -> inervals = [1; 2], [2; 3] 
-        private static List<Interval> GetIntervals(List<double> points)
-        {
-            var intervals = new List<Interval>();
-
-            for (int i = 0; i < points.Count - 1; i++)
-            {
-                intervals.Add(new Interval(points[i], points[i + 1]));
-            }
-
-            return intervals;
+            while (true);
         }
     }
 }
