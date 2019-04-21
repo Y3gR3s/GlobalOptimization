@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace GlobalOptimization
 {
@@ -11,50 +8,48 @@ namespace GlobalOptimization
         static void Main(string[] args)
         {
             // Начальные условия (см. метод Solver.GetAbsoluteMinimum)
-            double a   = 0,
-                   b   = 4,
-                   eps = 0.00001,
-                   r   = 1.5;
+            double a = 0,
+                   b = 4,
+                   eps = 0.0005,
+                   r = 1.5;
 
             // Координаты точки глобального минимума
-            double x,
-                   y;
+            double x, y;
 
-            using (var timer = new Timer((time) => Console.WriteLine("Продолжительность работы последовательного алгоритма: {0} мс", time)))
+            // Время работы последовательного и параллельного алгоритма
+            double seqTime = 0,
+                   parallelTime = 0,
+                   quaziParallelTime = 0;
+
+            // Количество процессоров
+            int processorsCount = Environment.ProcessorCount;
+
+            using (Timer timer = new Timer((time) => seqTime = time))
             {
                 Solver.GetAbsoluteMinimum(Functions.Shekel, a, b, eps, r, out x, out y);
             }
-            Console.WriteLine("Точка глобального минимума при последовательном алгоритме: [{0:0.000}, {1:0.000}]\n", x, y);
+            Console.WriteLine("Точка глобального минимума: [{0:0.00000}, {1:0.00000}]\n", x, y);
 
-            #region Parallel Realization
-
-            // Количество логических процессоров
-            int processorsCount = 50;
-
-            // Массивы, хранящие локальные минимумы на каждом из интервалов
-            var localMinimumsX = new double[processorsCount];
-            var localMinimumsY = new double[processorsCount];
-
-            // Делим исходный отрезок на равные интервалы исходя из количества процессоров
-            double intervalLength = (b - a) / processorsCount;
-            var intervals = Interval.DevideSegmentByIntervals(a, b, intervalLength);
-
-            //Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x0055;
-
-            using (var timer = new Timer((time) => Console.WriteLine("Продолжительность работы параллельного алгоритма: {0} мс", time)))
+            Console.WriteLine("{0, -20} {1, -15} {2, -15} {3, -15} {4, -15} {5, -15}", "Количество потоков", "T пос. (мс)", "T пар. (мс)", "T кв-пар. (мс)", "S", "E (%)");
+            for (int i = 1; i <= Environment.ProcessorCount; i++)
             {
-                Parallel.For(0, processorsCount, (i) =>
+                // Параллельное выполнение программы
+                Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x0055;
+                using (Timer timer = new Timer((time) => parallelTime = time))
                 {
-                    Solver.GetAbsoluteMinimum(Functions.Shekel, intervals[i].A, intervals[i].B, eps, r, out localMinimumsX[i], out localMinimumsY[i]);
-                });
+                    Solver.GetAbsoluteMinimumParallel(Functions.Shekel, a, b, eps, r, i, out x, out y);
+                }
 
-                y = localMinimumsY.Min();
-                x = localMinimumsX[localMinimumsY.ToList().IndexOf(y)];
+                // Квазипаралельное выполнение программы
+                Process.GetCurrentProcess().ProcessorAffinity = (IntPtr)0x0001;
+                using (Timer timer = new Timer((time) => quaziParallelTime = time))
+                {
+                    Solver.GetAbsoluteMinimumParallel(Functions.Shekel, a, b, eps, r, 1, out x, out y);
+                }
+
+                Console.WriteLine("{0, -20} {1, -15:0.000} {2, -15:0.000} {3, -15:0.000} {4, -15:0.000} {5, -15:0.000}", i, seqTime, parallelTime, quaziParallelTime,
+                    seqTime / parallelTime, (seqTime / parallelTime) / (processorsCount / 2) * 100);
             }
-
-            Console.WriteLine("Точка глобального минимума при параллельном алгоритме: [{0:0.000}, {1:0.000}]", x, y);
-
-            #endregion
 
             Console.ReadLine();
         }

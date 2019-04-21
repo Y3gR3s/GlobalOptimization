@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace GlobalOptimization
 {
@@ -20,6 +19,11 @@ namespace GlobalOptimization
         /// </summary>
         public double R { get; set; }
 
+        /// <summary>
+        /// Абсолютное значение относительной первой разности
+        /// </summary>
+        public double M { get; set; }
+
         public Interval(double a, double b)
         {
             A = a;
@@ -39,7 +43,7 @@ namespace GlobalOptimization
         /// <returns>Список интервалов</returns>
         public static List<Interval> GetIntervals(double[] points)
         {
-            var intervals = new List<Interval>();
+            List<Interval> intervals = new List<Interval>();
 
             for (int i = 0; i < points.Length - 1; i++)
             {
@@ -58,7 +62,7 @@ namespace GlobalOptimization
         /// <returns>Список интервалов</returns>
         public static List<Interval> DevideSegmentByIntervals(double a, double b, double length)
         {
-            var xPoints = new List<double>();
+            List<double> xPoints = new List<double>();
 
             for (double i = a; i < b; i += length)
             {
@@ -71,16 +75,12 @@ namespace GlobalOptimization
 
         public override bool Equals(object obj)
         {
-            if (obj == null)
+            if (obj == null || GetType() != obj.GetType())
             {
                 return false;
             }
 
             Interval interval = obj as Interval;
-            if (obj == null)
-            {
-                return false;
-            }
 
             return A == interval.A
                 && B == interval.B
