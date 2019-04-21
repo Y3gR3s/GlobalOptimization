@@ -34,7 +34,6 @@ namespace GlobalOptimization
         public static double Shekel(double x, IEnumerable<double[]> coefficients = null)
         {
             coefficients = coefficients ?? DefaultCoefficeints;
-            Thread.Sleep(1);
             return -coefficients.Sum(coefficient => 1 / (coefficient[0] * (x - coefficient[1]) * (x - coefficient[1]) + coefficient[2]));
         }
     }
